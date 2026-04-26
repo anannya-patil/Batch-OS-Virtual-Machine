@@ -1,6 +1,6 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.IOException;
+import java.io.FileWriter;
 
 public class OS
 {
@@ -13,15 +13,22 @@ public class OS
     //Memory
     char M[][] = new char[100][4];  //100 words. Each of 4 bytes.
 
+    int SI;
+    int address;
+
+    String line;
+    BufferedReader br;
+
     public void LOAD()
     {
         boolean continue_loading = true;
-        //read instruction from input.txt
-        try (BufferedReader br = new BufferedReader(new FileReader("input.txt")))
-        {
-            String line;
-            int Mi=0, Mj=0;
+        int Mi=0, Mj=0;
 
+        try
+        {
+            //read instruction from input.txt
+            br = new BufferedReader(new FileReader("input.txt"));
+    
             while((line = br.readLine()) != null)
             {
                 if(line.charAt(0)=='$' && line.charAt(1)=='E' && line.charAt(2)=='N' && line.charAt(3)=='D')
@@ -46,7 +53,7 @@ public class OS
                         {
                             M[j][i] = '\0';
                         }
-
+    
                     }
                     Mi = 0;
                 }
@@ -78,21 +85,152 @@ public class OS
                     }
                 }
             }
-
         }
-        catch(IOException e)
+        catch(Exception e)
         {
             e.printStackTrace();
         }
+
     }
 
     public void execute()
     {
+        IC = 0;
 
+        while(true)
+        {
+            for(int i=0; i<4; i++)
+            {
+                IR[i] = M[IC][i];
+            }
+            IC++;
+    
+            if(IR[0]=='G' && IR[1]=='D')
+            {
+                address = (IR[2] - '0') * 10 + (IR[3] - '0');
+                SI = 1;
+                MOS();
+            }
+            else if(IR[0]=='P' && IR[1]=='D')
+            {
+                address = (IR[2] - '0') * 10 + (IR[3] - '0');
+                SI = 2;
+                MOS();
+            }
+            else if(IR[0]=='H')
+            {
+                SI = 3;
+                MOS();
+                break;
+            }
+            else if(IR[0]=='L' && IR[1]=='R')
+            {
+                address = (IR[2] - '0') * 10 + (IR[3] - '0');
+                //load content into R register
+                for(int i=0; i<4; i++)
+                    R[i] = M[address][i];
+            }
+            else if(IR[0]=='S' && IR[1]=='R')
+            {
+                address = (IR[2] - '0') * 10 + (IR[3] - '0');
+                //store contents of R into memory
+                for(int i=0; i<4; i++)
+                    M[address][i] = R[i];
+            }
+            else if(IR[0]=='C' && IR[1]=='R')
+            {
+                address = (IR[2] - '0') * 10 + (IR[3] - '0');
+                //compare R with memory
+                C = true;
+                for(int i=0; i<4; i++)
+                {
+                    if(M[address][i] != R[i])
+                        C = false;
+                }
+            }
+            else if(IR[0]=='B' && IR[1]=='T')
+            {
+                address = (IR[2] - '0') * 10 + (IR[3] - '0');
+                //branch when true
+                if(C==true)
+                {
+                    IC = address;
+                }
+            }
+        }
+
+    }
+
+    public void MOS()
+    {
+        if(SI==1)
+        {
+            //GD
+            //read card (input.txt) and store in address
+            try
+            {
+                line = br.readLine();
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+
+            int j = 0;
+            for(int i = 0; i<line.length(); i++)
+            {
+                M[address][j] = line.charAt(i);
+                j++;
+                
+                if(j==4)
+                {
+                    address++; 
+                    j=0;
+                }
+
+            }
+        }
+        else if (SI==2)
+        {
+            try
+            {
+                FileWriter out = new FileWriter("output.txt", true);
+                for(int i=address; i<address+10; i++)
+                {
+                    //append to output.txt
+                    for(int j=0; j<4; j++)
+                    {
+                        out.write(M[i][j]);
+                    }
+                }
+                out.write('\n');
+                out.close();
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+
+        }
+        else if (SI==3)
+        {
+            try
+            {
+                //halt
+                FileWriter f = new FileWriter("output.txt", true);
+                f.write("\n\n");
+                f.close();
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
     }
 
     public static void main(String args[])
     {
-        System.out.println("Testing");
+        OS os = new OS();
+        os.LOAD();
     }
 }
