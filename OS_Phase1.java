@@ -2,7 +2,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 
-public class OS
+public class OS_Phase1
 {
     //Registers
     char R[] = new char[4]; //general register
@@ -230,7 +230,7 @@ public class OS
 
     public static void main(String args[])
     {
-        OS os = new OS();
+        OS_Phase1 os = new OS_Phase1();
         os.LOAD();
     }
 }
