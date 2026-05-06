@@ -9,7 +9,7 @@ public class OS_Phase1
     char IR[] = new char[4]; //instruction register to store instructions
     int IC = 0; //instruction counter: saves address of next instruction
     boolean C; //for result of comparision with R. Match = true. No match = false.
-
+    
     //Memory
     char M[][] = new char[100][4];  //100 words. Each of 4 bytes.
 

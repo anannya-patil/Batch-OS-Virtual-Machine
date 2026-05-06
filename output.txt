@@ -1,5 +1,5 @@
                                         
 
 
-Time Limit Exceeded
-Job ID:1 IC:3 TTC:2 LLC:1
+Program Executed Successfully
+Job ID: 1 IC: 3 TTC: 2 LLC: 1

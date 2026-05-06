@@ -6,14 +6,13 @@ public class OS_Phase2
     char IR[] = new char[4];
     char R[] = new char[4];
 
-    int IC, PTR, RA, VA;
-    int SI, PI, TI;
-    boolean C;
-
-    boolean used[] = new boolean[30];
-    boolean terminateFlag;
-
+    int IC, PTR, real_address, virtual_address;
+    //PTR = page table register. stores starting address of page table.
     int jobId, TTL, TLL, TTC, LLC;
+    int SI, PI, TI; //service interrupt, program interrupt, time interrupt
+    boolean C;
+    boolean is_frame_allocated[] = new boolean[30];
+    boolean terminateFlag;
 
     BufferedReader br;
     BufferedWriter bw;
@@ -25,14 +24,19 @@ public class OS_Phase2
             br = new BufferedReader(new FileReader("input.txt"));
             bw = new BufferedWriter(new FileWriter("output.txt"));
         }
-        catch(Exception e){e.printStackTrace();}
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
-    public void init()
+    public void initialize()
     {
         for(int i=0; i<300; i++)
+        {
             for(int j=0; j<4; j++)
                 M[i][j] = ' ';
+        }
 
         for(int i=0; i<4; i++)
         {
@@ -40,71 +44,71 @@ public class OS_Phase2
             R[i] = ' ';
         }
 
-        IC=0; PTR=0; RA=0; VA=0;
-        SI = 0; PI = 0; TI = 0;
-        C = false;
-
-        TTC = 0; LLC=0;
-        terminateFlag = false;
+        IC=0; PTR=0; 
+        real_address=0; virtual_address=0; 
+        SI = 0; PI = 0; TI = 0; C = false; TTC = 0; LLC=0; terminateFlag = false;
 
         for(int i=0; i<30; i++)
-            used[i] = false;
+            is_frame_allocated[i] = false;
     }
 
-    public int allocate()
+    public int allocatePF() //allocating page frame to a page.
     {
         int f;
         do
         {
             f = (int)(Math.random()*30);
-        }while(used[f]);
+        } while(is_frame_allocated[f]); //continue finding random page frames till an empty one is found
 
-        used[f] = true;
+        is_frame_allocated[f] = true;
+
         return f;
     }
 
-    public int addressMap(int VA)
+    public int addressMap(int virtual_address)
     {
-        if(VA < 0 || VA >= 100)
+        if(virtual_address < 0 || virtual_address >= 100) //one job only gets 100 virtual adrs
         {
-            PI = 2;
+            PI = 2; //operand error if invalid addr
             return -1;
         }
 
-        int pte = PTR + VA/10;
+        int pte = PTR + virtual_address/10;    //page table entry
 
         if(M[pte][0] == '*')
         {
-            PI = 3;
+            PI = 3; //page fault
             return -1;
         }
 
+        /*
+        The page table, for each word: bit 2 and 4 give page frame no.
+        so for two diff digits a and b,
+        a*10+b gives values of the no. ab.
+        */
         int frame = (M[pte][2] - '0')*10 + (M[pte][3]-'0');
-        return frame*10 + VA%10;
+        real_address = frame*10 + virtual_address%10;
+        return real_address;
     }
 
-    public void load()
+    public void LOAD()
     {
         String line;
-        int page = 0;
-        int wordOffset = 0;
-        int f = 0;
-        int loc = 0;
+        int page = 0, offset = 0, f = 0, loc = 0;
 
         try
         {
             while((line=br.readLine())!=null)
             {
-                if(line.startsWith("$AMJ"))
+                if(line.charAt(0)=='$' && line.charAt(1)=='A' && line.charAt(2)=='M' && line.charAt(3)=='J')
                 {
-                    init();
+                    initialize();
 
-                    String p[] = line.split(" +");
-                    jobId = Integer.parseInt(p[1]);
-                    TTL = Integer.parseInt(p[2]);
-                    TLL = Integer.parseInt(p[3]);
+                    jobId = Integer.parseInt(""+line.charAt(5)+line.charAt(6)+line.charAt(7)+line.charAt(8));
+                    TTL = Integer.parseInt(""+line.charAt(10)+line.charAt(11)+line.charAt(12)+line.charAt(13));
+                    TLL = Integer.parseInt(""+line.charAt(15)+line.charAt(16)+line.charAt(17)+line.charAt(18));
 
-                    int pf = allocate();
+                    int pf = allocatePF();
                     PTR = pf*10;
 
                     for(int i=PTR; i<PTR+10; i++)
@@ -115,10 +119,9 @@ public class OS_Phase2
                         M[i][3]='*';
                     }
 
-                    page = 0;
-                    wordOffset=0;
+                    page = 0; offset=0;
 
-                    f = allocate();
+                    f = allocatePF();
                     int pte = PTR + page;
                     M[pte][0]='0';
                     M[pte][1]='0';
@@ -131,32 +134,38 @@ public class OS_Phase2
                         for(int j=0; j<4; j++)
                             M[i][j]=' ';
                 }
-                else if(line.startsWith("$DTA"))
+                else if(line.charAt(0)=='$' && line.charAt(1)=='D' && line.charAt(2)=='T' && line.charAt(3)=='A')
                 {
                     execute();
                 }
-                else if(line.startsWith("$END"))
+                else if(line.charAt(0)=='$' && line.charAt(1)=='E' && line.charAt(2)=='N' && line.charAt(3)=='D')
                 {
                     continue;
                 }
                 else
                 {
-                    for(int i=0; i<4; i++)
+                    if(line.charAt(0) == 'H')
                     {
-                        if(i < line.length())
-                            M[loc + wordOffset][i] = line.charAt(i);
-                        else
-                            M[loc + wordOffset][i]=' ';
+                        M[loc+offset][0] = 'H';
+                        M[loc+offset][1]=' ';
+                        M[loc+offset][2] = ' ';
+                        M[loc+offset][3]=' ';
                     }
+                    else
+                    {
+                        for(int i=0; i<4; i++)
+                        {
+                            M[loc+offset][i] = line.charAt(i);
+                        }
+                    }
+                    offset++;
 
-                    wordOffset++;
-
-                    if(wordOffset==10)
+                    if(offset == 10)
                     {
                         page++;
-                        wordOffset = 0;
+                        offset = 0;
 
-                        f = allocate();
+                        f = allocatePF();
 
                         int pte = PTR + page;
 
@@ -174,7 +183,10 @@ public class OS_Phase2
                 }
             }
         }
-        catch(Exception e){e.printStackTrace();}
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void execute()
@@ -183,9 +195,10 @@ public class OS_Phase2
 
         while(true)
         {
-            if(terminateFlag) return;
+            if(terminateFlag) 
+                return;
 
-            RA = addressMap(IC);
+            real_address = addressMap(IC);
 
             if(PI!=0)
             {
@@ -194,7 +207,7 @@ public class OS_Phase2
             }
 
             for(int i=0; i<4; i++)
-                IR[i] = M[RA][i];
+                IR[i] = M[real_address][i];
 
             IC++;
 
@@ -216,23 +229,23 @@ public class OS_Phase2
                     return;
                 }
 
-                VA=(IR[2]-'0')*10 + (IR[3]-'0');
-                RA=addressMap(VA);
+                virtual_address=(IR[2]-'0')*10 + (IR[3]-'0');
+                real_address = addressMap(virtual_address);
 
                 if(PI==3)
                 {
                     if(op.equals("GD") || op.equals("SR"))
                     {
-                        int f=allocate();
-                        int pte=PTR+VA/10;
+                        int f = allocatePF();
+                        int pte=PTR+virtual_address/10;
 
                         M[pte][0]='0';
                         M[pte][1]='0';
-                        M[pte][2]=(char)(f/10+'0');
+                        M[pte][2] = (char)(f/10+'0');
                         M[pte][3]=(char)(f%10+'0');
 
                         PI = 0;
-                        RA = addressMap(VA);
+                        real_address = addressMap(virtual_address);
                         continue;
                     }
                     else
@@ -246,25 +259,29 @@ public class OS_Phase2
             if(op.equals("LR"))
             {
                 for(int i =0;i<4;i++)
-                    R[i] =M [RA][i];
+                    R[i] = M[real_address][i];
                 TTC++;
             }
             else if(op.equals("SR"))
             {
                 for(int i=0;i<4;i++)
-                    M[RA][i]=R[i];
+                    M[real_address][i]=R[i];
                 TTC++;
             }
             else if(op.equals("CR"))
             {
                 C=true;
                 for(int i=0;i<4;i++)
-                    if(R[i]!=M[RA][i]) C=false;
+                {
+                    if(R[i]!=M[real_address][i]) 
+                        C=false;
+                }
                 TTC++;
             }
             else if(op.equals("BT"))
             {
-                if(C) IC=VA;
+                if(C) 
+                    IC=virtual_address;
                 TTC++;
             }
             else if(op.equals("GD"))
@@ -272,27 +289,32 @@ public class OS_Phase2
                 SI=1;
                 TTC+=2;
 
-                if(TTC>TTL) TI=2;
+                if(TTC>TTL) 
+                    TI=2;
 
                 MOS();
-                if(terminateFlag) return;
+                if(terminateFlag) 
+                    return;
             }
             else if(op.equals("PD"))
             {
                 SI=2;
                 TTC++;
 
-                if(TTC>TTL) TI=2;
+                if(TTC>TTL) 
+                    TI=2;
 
                 MOS();
-                if(terminateFlag) return;
+                if(terminateFlag) 
+                    return;
             }
             else if(IR[0]=='H')
             {
                 SI=3;
                 TTC++;
 
-                if(TTC>TTL) TI=2;
+                if(TTC>TTL) 
+                    TI=2;
 
                 MOS();
                 return;
@@ -326,7 +348,7 @@ public class OS_Phase2
                     terminate(2);
                 else
                 {
-                    for(int i=RA; i<RA+10; i++)
+                    for(int i=real_address; i<real_address+10; i++)
                         for(int j=0;j<4;j++)
                             bw.write(M[i][j]);
                     bw.newLine();
@@ -348,7 +370,10 @@ public class OS_Phase2
             PI=0; 
             TI=0;
         }
-        catch(Exception e){e.printStackTrace();}
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void read()
@@ -357,13 +382,13 @@ public class OS_Phase2
         {
             String data=br.readLine();
 
-            if(data.startsWith("$END"))
+            if(data.charAt(0)=='$' && data.charAt(1)=='E' && data.charAt(2)=='N' && data.charAt(3)=='D')
             {
                 terminate(1);
                 return;
             }
 
-            int loc = RA, k=0;
+            int loc = real_address, k=0;
 
             for(int i=0;i<40;i++)
             {
@@ -381,7 +406,10 @@ public class OS_Phase2
                 }
             }
         }
-        catch(Exception e){e.printStackTrace();}
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void write()
@@ -396,13 +424,16 @@ public class OS_Phase2
                 return;
             }
 
-            for(int i=RA; i < RA+10; i++)
+            for(int i=real_address; i < real_address+10; i++)
                 for(int j=0; j<4; j++)
                     bw.write(M[i][j]);
 
             bw.newLine();
         }
-        catch(Exception e){e.printStackTrace();}
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void terminate(int em)
@@ -411,25 +442,35 @@ public class OS_Phase2
         {
             bw.write("\n\n");
 
-            if(em==0) bw.write("Program Executed Successfully\n");
-            else if(em==1) bw.write("Out of Data\n");
-            else if(em==2) bw.write("Line Limit Exceeded\n");
-            else if(em==3) bw.write("Time Limit Exceeded\n");
-            else if(em==4) bw.write("Operation Code Error\n");
-            else if(em==5) bw.write("Operand Error\n");
-            else if(em==6) bw.write("Invalid Page Fault\n");
+            if(em==0) 
+                bw.write("Program Executed Successfully\n");
+            else if(em==1) 
+                bw.write("Out of Data\n");
+            else if(em==2) 
+                bw.write("Line Limit Exceeded\n");
+            else if(em==3) 
+                bw.write("Time Limit Exceeded\n");
+            else if(em==4) 
+                bw.write("Operation Code Error\n");
+            else if(em==5) 
+                bw.write("Operand Error\n");
+            else if(em==6) 
+                bw.write("Invalid Page Fault\n");
 
-            bw.write("Job ID:"+jobId+" IC:"+IC+" TTC:"+TTC+" LLC:"+LLC+"\n");
+            bw.write("Job ID: "+jobId+" IC: "+IC+" TTC: "+TTC+" LLC: "+LLC+"\n");
             bw.flush();
 
             terminateFlag=true;
         }
-        catch(Exception e){e.printStackTrace();}
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String args[])
     {
         OS_Phase2 os = new OS_Phase2();
-        os.load();
+        os.LOAD();
     }
 }
