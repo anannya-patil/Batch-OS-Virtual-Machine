@@ -34,7 +34,18 @@ public class OS_Phase1
                 if(line.charAt(0)=='$' && line.charAt(1)=='E' && line.charAt(2)=='N' && line.charAt(3)=='D')
                 {
                     System.out.println("End of job.");
-                    break;
+                    printMemory();
+                    try
+                    {
+                        FileWriter f = new FileWriter("output.txt", true);
+                        f.write("\n\n");
+                        f.close();
+                    }
+                    catch(Exception e)
+                    {
+                        e.printStackTrace();
+                    }
+                    continue;
                 }
                 else if(line.charAt(0)=='$' && line.charAt(1)=='A' && line.charAt(2)=='M' && line.charAt(3)=='J')
                 {
@@ -225,6 +236,31 @@ public class OS_Phase1
             {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public void printMemory()
+    {
+        try
+        {
+            FileWriter fw = new FileWriter("p1mem.txt", true);
+            fw.write("\nMemory:\n");
+            for(int i=0; i<100; i++)
+            {
+                fw.write(String.format(i + " : "));
+                for(int j=0; j<4; j++)
+                {
+                    fw.write(M[i][j]);
+                    fw.write(' ');
+                }
+                fw.write("\n");
+            }
+            fw.write("\n\n\n");
+            fw.close();
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
         }
     }
 

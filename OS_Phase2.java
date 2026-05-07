@@ -436,6 +436,31 @@ public class OS_Phase2
         }
     }
 
+    public void printMemory()
+    {
+        try
+        {
+            FileWriter fw = new FileWriter("p2mem.txt", true);
+            fw.write("\nMemory:\n");
+            for(int i=0; i<300; i++)
+            {
+                fw.write(String.format(i + " : "));
+                for(int j=0; j<4; j++)
+                {
+                    fw.write(M[i][j]);
+                    fw.write(' ');
+                }
+                fw.write("\n");
+            }
+            fw.write("\n\n\n");
+            fw.close();
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public void terminate(int em)
     {
         try
@@ -459,6 +484,8 @@ public class OS_Phase2
 
             bw.write("Job ID: "+jobId+" IC: "+IC+" TTC: "+TTC+" LLC: "+LLC+"\n");
             bw.flush();
+
+            printMemory();
 
             terminateFlag=true;
         }
